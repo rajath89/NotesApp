@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Api.Middleware;
 using Application.Interfaces;
 using Application.Mappings;
@@ -23,6 +24,10 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+
+// Add conditional auth
+builder.Services.AddConditionalAuthentication(builder.Configuration, builder.Environment);
 
 
  /*// Add API Versioning
