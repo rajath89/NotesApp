@@ -30,6 +30,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddConditionalAuthentication(builder.Configuration, builder.Environment);
 
 
+
  /*// Add API Versioning
 builder.Services.AddApiVersioning(options =>
 {
@@ -106,6 +107,7 @@ app.UseHttpsRedirection();
 //app.UseCors("AllowSpecificOrigin");
 
 // Custom exception handling middleware
+//app.UseJwtValidation();
 app.UseGlobalExceptionHandling();
 
 //app.UseAuthentication();

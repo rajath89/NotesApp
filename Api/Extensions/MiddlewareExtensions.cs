@@ -13,4 +13,9 @@ public static class MiddlewareExtensions
     {
         return builder.UseMiddleware<GlobalExceptionHandlingMiddleware>();
     }
+    
+    public static IApplicationBuilder UseJwtValidation(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<JwtValidationMiddleware>();
+    }
 }
