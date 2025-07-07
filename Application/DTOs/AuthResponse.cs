@@ -1,6 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace Application.DTOs;
 
 public class AuthResponse
 {
-    public Completion Completion { get; set; } = new();
+    [JsonPropertyName("status")]
+    public int Status { get; set; }
+
+    [JsonPropertyName("errorInfo")]
+    public ErrorInfo? ErrorInfo { get; set; }
 }

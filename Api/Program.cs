@@ -10,6 +10,7 @@ using Infrastructure.Data;
 using Infrastructure.Data.Repositories;
 using Infrastructure.Logging;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,6 +51,11 @@ builder.Services.AddVersionedApiExplorer(options =>
     options.GroupNameFormat = "'v'VVV";
     options.SubstituteApiVersionInUrl = true;
 });
+
+
+// Add SQLite DbContext
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -117,9 +123,6 @@ app.UseGlobalExceptionHandling();
 
 //app.UseAuthentication();
 //app.UseAuthorization();
-
-// Custom request tracing middleware - after auth but before controllers
-//app.UseRequestTracing();
 
 app.MapControllers();
 

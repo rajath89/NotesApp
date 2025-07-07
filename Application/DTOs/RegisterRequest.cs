@@ -18,9 +18,6 @@ public class RegisterRequest
     [Required]
     public string TraceId { get; set; } = string.Empty;
         
-    [Required]
-    public string UseCase { get; set; } = string.Empty;
-        
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
 }

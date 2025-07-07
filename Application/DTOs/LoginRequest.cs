@@ -13,7 +13,4 @@ public class LoginRequest
         
     [Required]
     public string TraceId { get; set; } = string.Empty;
-        
-    [Required]
-    public string UseCase { get; set; } = string.Empty;
 }

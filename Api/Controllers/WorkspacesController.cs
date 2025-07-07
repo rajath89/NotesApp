@@ -19,7 +19,7 @@ public class WorkspacesController : ControllerBase
         _workspaceService = workspaceService;
     }
 
-    private string GetTraceId() => HttpContext.Items["TraceId"]?.ToString() ?? "untraced";
+    private string GetTraceId() => HttpContext.Items["TraceId"]?.ToString();
     private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
     [HttpGet]
