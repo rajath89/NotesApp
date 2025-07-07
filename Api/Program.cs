@@ -29,6 +29,11 @@ builder.Services.AddSwaggerGen();
 // Add conditional auth
 builder.Services.AddConditionalAuthentication(builder.Configuration, builder.Environment);
 
+// Add HttpClient for AuthService
+builder.Services.AddHttpClient<IAuthService, AuthService>();
+
+// Register AuthService
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 
  /*// Add API Versioning
