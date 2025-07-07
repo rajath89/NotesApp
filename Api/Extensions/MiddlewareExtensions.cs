@@ -4,18 +4,13 @@ namespace Api.Extensions;
 
 public static class MiddlewareExtensions
 {
-    public static IApplicationBuilder UseRequestTracing(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<RequestTracingMiddleware>();
-    }
-
     public static IApplicationBuilder UseGlobalExceptionHandling(this IApplicationBuilder builder)
     {
         return builder.UseMiddleware<GlobalExceptionHandlingMiddleware>();
     }
     
-    public static IApplicationBuilder UseJwtValidation(this IApplicationBuilder builder)
+    public static IApplicationBuilder UseAplicationInterceptor(this IApplicationBuilder builder)
     {
-        return builder.UseMiddleware<JwtValidationMiddleware>();
+        return builder.UseMiddleware<AplicationInterceptorMiddleware>();
     }
 }

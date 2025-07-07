@@ -111,8 +111,8 @@ app.UseHttpsRedirection();
 
 //app.UseCors("AllowSpecificOrigin");
 
-// Custom exception handling middleware
-//app.UseJwtValidation();
+
+app.UseAplicationInterceptor();
 app.UseGlobalExceptionHandling();
 
 //app.UseAuthentication();
