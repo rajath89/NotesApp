@@ -36,47 +36,16 @@ builder.Services.AddHttpClient<IAuthService, AuthService>();
 // Register AuthService
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-
- /*// Add API Versioning
-builder.Services.AddApiVersioning(options =>
-{
-    options.DefaultApiVersion = new ApiVersion(1, 0);
-    options.AssumeDefaultVersionWhenUnspecified = true;
-    options.ReportApiVersions = true;
-    options.ApiVersionReader = new UrlSegmentApiVersionReader();
-});
-
-builder.Services.AddVersionedApiExplorer(options =>
-{
-    options.GroupNameFormat = "'v'VVV";
-    options.SubstituteApiVersionInUrl = true;
-});
-
-
 // Add SQLite DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add DbContext
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-// Add JWT Authentication
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.Authority = builder.Configuration["JWT:Authority"];
-    options.Audience = builder.Configuration["JWT:Audience"];
-});
 
 // Add Memory Cache
 builder.Services.AddMemoryCache();
@@ -91,17 +60,7 @@ builder.Services.AddSingleton<ICacheService, InMemoryCacheService>();
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
-
-// CORS Configuration
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowSpecificOrigin",
-        builder => builder
-            .WithOrigins("https://localhost:7001") // MVC app URL
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials());
-});*/
+ 
 
 
 var app = builder.Build();
@@ -122,7 +81,7 @@ app.UseAplicationInterceptor();
 app.UseGlobalExceptionHandling();
 
 //app.UseAuthentication();
-//app.UseAuthorization();
+app.UseAuthorization();
 
 app.MapControllers();
 

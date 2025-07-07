@@ -56,7 +56,7 @@ public class AplicationInterceptorMiddleware
 
                 // Extract trace ID from JWT token if present, otherwise generate new one
                 var jwtToken = validatedToken as JwtSecurityToken;
-                string traceId = jwtToken?.Claims?.FirstOrDefault(x => x.Type == "traceId")?.Value;
+                string traceId = jwtToken?.Claims?.FirstOrDefault(x => x.Type == "TraceId")?.Value;
                 
                 if (string.IsNullOrEmpty(traceId))
                 {

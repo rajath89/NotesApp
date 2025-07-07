@@ -40,7 +40,7 @@ public class WorkspacesController : ControllerBase
         return Ok(workspace);
     }
 
-    [HttpPost]
+    [HttpPost("createWorkspace")]
     public async Task<ActionResult<WorkspaceDto>> CreateWorkspace(CreateWorkspaceDto createWorkspaceDto)
     {
         var workspace = await _workspaceService.CreateWorkspaceAsync(createWorkspaceDto, GetUserId(), GetTraceId());
