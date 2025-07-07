@@ -39,7 +39,7 @@ public class AuthService : IAuthService
                 request.Headers.Add("User-Agent", "NotesApp/1.0");
 
                 // Add content
-                var jsonContent = JsonSerializer.Serialize(loginRequest, new JsonSerializerOptions
+                var jsonContent = JsonSerializer.Serialize(GetAuthApiLoginRequest(traceId,loginRequest), new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 });
@@ -106,6 +106,31 @@ public class AuthService : IAuthService
                 };
             }
         }
+        
+        private AuthApiLoginRequest GetAuthApiLoginRequest(string traceId, LoginRequest loginRequest)
+        {
+            return new AuthApiLoginRequest
+            {
+                Email = loginRequest.Email,
+                Password = loginRequest.Password,
+                TraceId = traceId,
+                UseCase = "user_login"
+            };
+        }
+        
+        private AuthApiRegisterRequest GetAuthApiRegisterRequest(string traceId, RegisterRequest registerRequest)
+        {
+            return new AuthApiRegisterRequest
+            {
+                Email = registerRequest.Email,
+                Password = registerRequest.Password,
+                FirstName = registerRequest.FirstName,
+                LastName = registerRequest.LastName,
+                Username = registerRequest.Username,
+                TraceId = traceId,
+                UseCase = "user_register"
+            };
+        }
 
         public async Task<AuthApiResponse> RegisterAsync(RegisterRequest registerRequest, string traceId)
         {
@@ -123,10 +148,9 @@ public class AuthService : IAuthService
                 request.Headers.Add("ApplicationId", applicationId);
                 request.Headers.Add("SecurityToken", securityToken);
                 request.Headers.Add("TraceId", traceId);
-                //request.Headers.Add("User-Agent", "NotesApp/1.0");
 
                 // Add content
-                var jsonContent = JsonSerializer.Serialize(registerRequest, new JsonSerializerOptions
+                var jsonContent = JsonSerializer.Serialize(GetAuthApiRegisterRequest(traceId,registerRequest), new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 });

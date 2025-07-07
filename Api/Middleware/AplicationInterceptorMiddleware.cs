@@ -14,7 +14,7 @@ public class AplicationInterceptorMiddleware
     {
         _next = next;
         _logger = logger;
-        _jwtSecret = configuration["Jwt:Secret"];
+        _jwtSecret = configuration["JwtSettings:SecretKey"];
     }
 
     public async Task InvokeAsync(HttpContext context)

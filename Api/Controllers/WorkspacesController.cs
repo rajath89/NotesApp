@@ -8,7 +8,7 @@ namespace Api.Controllers;
 
 [ApiController]
 //[ApiVersion("1.0")]
-[Route("api/v1/[controller]")] //"api/v{version:apiVersion}/[controller]"
+[Route("NotesApp/api/v1/[controller]")] //"api/v{version:apiVersion}/[controller]"
 [Authorize]
 public class WorkspacesController : ControllerBase
 {
