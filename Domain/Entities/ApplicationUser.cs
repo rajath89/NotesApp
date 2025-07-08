@@ -1,7 +1,9 @@
 namespace Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 
-public class ApplicationUser : IdentityUser
+public class ApplicationUser
 {
-    public ICollection<Workspace> Workspaces { get; set; } = new List<Workspace>();
+    public string Id { get; set; }
+    public string Email { get; set; }
+    public ICollection<Workspace> Workspaces { get; set; }
 }

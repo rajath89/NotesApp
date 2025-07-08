@@ -9,7 +9,6 @@ using Infrastructure.Caching;
 using Infrastructure.Data;
 using Infrastructure.Data.Repositories;
 using Infrastructure.Logging;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -39,12 +38,6 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Add SQLite DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-
-// Add Identity
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<AppDbContext>()
-    .AddDefaultTokenProviders();
 
 
 // Add Memory Cache

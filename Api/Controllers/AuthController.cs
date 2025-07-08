@@ -1,13 +1,15 @@
 using Application.DTOs;
 using Application.Interfaces;
+using Domain.Entities;
+using Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
 [ApiController]
-    [Route("NotesApp/public/api/v1/[controller]")]
-    [AllowAnonymous]
+[Route("NotesApp/public/api/v1/[controller]")]
+[AllowAnonymous]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -25,7 +27,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest loginRequest)
     {
         var traceId = GetTraceId();
-        
+
         try
         {
             _logger.LogInformation("[{TraceId}] Login request received for user {Email}", traceId, loginRequest.Email);
@@ -47,8 +49,8 @@ public class AuthController : ControllerBase
                 };
 
                 Response.Cookies.Append("SSOTOKEN", result.Token, cookieOptions);
-                
-                _logger.LogInformation("[{TraceId}] Login successful for user {Email}, SSOTOKEN cookie set", 
+
+                _logger.LogInformation("[{TraceId}] Login successful for user {Email}, SSOTOKEN cookie set",
                     requestTraceId, loginRequest.Email);
 
                 return Ok(new AuthResponse { Status = 0 });
@@ -56,9 +58,9 @@ public class AuthController : ControllerBase
             else
             {
                 _logger.LogWarning("[{TraceId}] Login failed for user {Email}", requestTraceId, loginRequest.Email);
-                
-                return BadRequest(new AuthResponse 
-                { 
+
+                return BadRequest(new AuthResponse
+                {
                     Status = -1,
                     ErrorInfo = new ErrorInfo
                     {
@@ -70,8 +72,9 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{TraceId}] Error processing login request for user {Email}", traceId, loginRequest.Email);
-            
+            _logger.LogError(ex, "[{TraceId}] Error processing login request for user {Email}", traceId,
+                loginRequest.Email);
+
             return StatusCode(500, new AuthResponse
             {
                 Status = -1,
@@ -88,10 +91,11 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest registerRequest)
     {
         var traceId = GetTraceId();
-        
+
         try
         {
-            _logger.LogInformation("[{TraceId}] Registration request received for user {Email}", traceId, registerRequest.Email);
+            _logger.LogInformation("[{TraceId}] Registration request received for user {Email}", traceId,
+                registerRequest.Email);
 
             // Use the traceId from the request if provided, otherwise use the one from middleware
             var requestTraceId = !string.IsNullOrEmpty(registerRequest.TraceId) ? registerRequest.TraceId : traceId;
@@ -100,15 +104,20 @@ public class AuthController : ControllerBase
 
             if (result.Completion.Code == "SUCCESS")
             {
-                _logger.LogInformation("[{TraceId}] Registration successful for user {Email}", requestTraceId, registerRequest.Email);
+                _logger.LogInformation("[{TraceId}] Registration successful for user {Email}", requestTraceId,
+                    registerRequest.Email);
+
+                await UpdateApplicationUser(registerRequest, result.Token);
+                
                 return Ok(new AuthResponse { Status = 0 });
             }
             else
             {
-                _logger.LogWarning("[{TraceId}] Registration failed for user {Email}", requestTraceId, registerRequest.Email);
-                
-                return BadRequest(new AuthResponse 
-                { 
+                _logger.LogWarning("[{TraceId}] Registration failed for user {Email}", requestTraceId,
+                    registerRequest.Email);
+
+                return BadRequest(new AuthResponse
+                {
                     Status = -1,
                     ErrorInfo = new ErrorInfo
                     {
@@ -120,8 +129,9 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{TraceId}] Error processing registration request for user {Email}", traceId, registerRequest.Email);
-            
+            _logger.LogError(ex, "[{TraceId}] Error processing registration request for user {Email}", traceId,
+                registerRequest.Email);
+
             return StatusCode(500, new AuthResponse
             {
                 Status = -1,
@@ -134,18 +144,45 @@ public class AuthController : ControllerBase
         }
     }
 
+    private async Task UpdateApplicationUser(RegisterRequest registerRequest, string userId)
+    {
+        // This method should update the application user with the provided details
+        // For example, you can use a UserManager or similar service to update the user in your database
+        // This is a placeholder implementation
+        _logger.LogInformation("Updating application user with ID {UserId} - Username: {Username}, Email: {Email}",
+            userId, registerRequest.Username, registerRequest.Email);
+
+        // ✅ Get external UserId if available, else fallback
+        var externalUserId = userId;
+
+        using var scope = HttpContext.RequestServices.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = new ApplicationUser
+        {
+            Id = externalUserId,
+            Email = registerRequest.Email
+        };
+
+        dbContext.Add(user);
+        await dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(" User {Id} with email {Email} saved to ApplicationUser table",
+            user.Id, user.Email);
+    }
+
     [HttpPost("logout")]
     public ActionResult<AuthResponse> Logout()
     {
         var traceId = GetTraceId();
-        
+
         try
         {
             _logger.LogInformation("[{TraceId}] Logout request received", traceId);
 
             // Clear the SSOTOKEN cookie
             Response.Cookies.Delete("SSOTOKEN");
-            
+
             _logger.LogInformation("[{TraceId}] Logout successful, SSOTOKEN cookie cleared", traceId);
 
             return Ok(new AuthResponse { Status = 0 });
@@ -153,7 +190,7 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{TraceId}] Error processing logout request", traceId);
-            
+
             return StatusCode(500, new AuthResponse
             {
                 Status = -1,

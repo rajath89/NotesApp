@@ -22,7 +22,7 @@ public class WorkspacesController : ControllerBase
     private string GetTraceId() => HttpContext.Items["TraceId"]?.ToString();
     private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-    [HttpGet]
+    [HttpGet("getWorkspaces")]
     public async Task<ActionResult<IEnumerable<WorkspaceDto>>> GetWorkspaces()
     {
         var workspaces = await _workspaceService.GetUserWorkspacesAsync(GetUserId(), GetTraceId());
