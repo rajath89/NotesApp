@@ -7,4 +7,6 @@ public interface ICacheService
     void Set<T>(string key, T value, TimeSpan expirationTime);
     void Remove(string key);
     bool TryGetValue<T>(string key, out T value);
+    void RemoveByPattern(string pattern);
+    void RemoveMultiple(IEnumerable<string> keys);
 }
