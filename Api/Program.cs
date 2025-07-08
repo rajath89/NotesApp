@@ -56,8 +56,6 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Add global workspace cache
 builder.Services.AddCachingServices();
- 
-
 
 var app = builder.Build();
 
