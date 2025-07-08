@@ -14,11 +14,7 @@ public class WorkspaceService : IWorkspaceService
     private readonly ILogger<WorkspaceService> _logger;
     private readonly ICacheService _cacheService;
 
-    public WorkspaceService(
-        IUnitOfWork unitOfWork,
-        IMapper mapper,
-        ILogger<WorkspaceService> logger,
-        ICacheService cacheService)
+    public WorkspaceService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<WorkspaceService> logger, ICacheService cacheService)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
@@ -26,127 +22,189 @@ public class WorkspaceService : IWorkspaceService
         _cacheService = cacheService;
     }
 
-    public async Task<IEnumerable<WorkspaceDto>> GetUserWorkspacesAsync(string userId, string traceId)
+    public async Task<ServiceResponse<IEnumerable<WorkspaceDto>>> GetUserWorkspacesAsync(string userId, string traceId)
     {
-        _logger.LogInformation("[{TraceId}] Getting workspaces for user {UserId}", traceId, userId);
-
-        // Try to get from cache first
-        string cacheKey = $"{traceId}_user_{userId}_workspaces";
-        if (_cacheService.TryGetValue<IEnumerable<WorkspaceDto>>(cacheKey, out var cachedWorkspaces))
+        try
         {
-            _logger.LogInformation("[{TraceId}] Returning cached workspaces for user {UserId}", traceId, userId);
-            return cachedWorkspaces;
+            _logger.LogInformation("[{TraceId}] Getting workspaces for user {UserId}", traceId, userId);
+
+            var cacheKey = $"{traceId}_user_{userId}_workspaces";
+            if (_cacheService.TryGetValue<IEnumerable<WorkspaceDto>>(cacheKey, out var cachedWorkspaces))
+            {
+                _logger.LogInformation("[{TraceId}] Returning cached workspaces for user {UserId}", traceId, userId);
+                return ServiceResponse<IEnumerable<WorkspaceDto>>.SuccessResponse(cachedWorkspaces);
+            }
+
+            var workspaces = await _unitOfWork.WorkspaceRepository.GetWorkspacesByUserIdAsync(userId);
+            var workspaceDtos = _mapper.Map<IEnumerable<WorkspaceDto>>(workspaces);
+
+            _cacheService.Set(cacheKey, workspaceDtos);
+            _logger.LogInformation("[{TraceId}] Successfully retrieved {Count} workspaces for user {UserId}", 
+                traceId, workspaceDtos.Count(), userId);
+
+            return ServiceResponse<IEnumerable<WorkspaceDto>>.SuccessResponse(workspaceDtos);
         }
-
-        // Get from database
-        var workspaces = await _unitOfWork.WorkspaceRepository.GetWorkspacesByUserIdAsync(userId);
-        var workspaceDtos = _mapper.Map<IEnumerable<WorkspaceDto>>(workspaces);
-
-        // Store in cache
-        _cacheService.Set(cacheKey, workspaceDtos);
-
-        return workspaceDtos;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{TraceId}] Error getting workspaces for user {UserId}", traceId, userId);
+            return ServiceResponse<IEnumerable<WorkspaceDto>>.FailureResponse("Failed to retrieve workspaces");
+        }
     }
 
-    public async Task<WorkspaceDto> GetWorkspaceAsync(int id, string userId, string traceId)
+    public async Task<ServiceResponse<WorkspaceDto>> GetWorkspaceAsync(int id, string userId, string traceId)
     {
-        _logger.LogInformation("[{TraceId}] Getting workspace {WorkspaceId} for user {UserId}", traceId, id, userId);
-
-        // Try to get from cache first
-        string cacheKey = $"{traceId}_workspace_{id}";
-        if (_cacheService.TryGetValue<WorkspaceDto>(cacheKey, out var cachedWorkspace))
+        try
         {
-            _logger.LogInformation("[{TraceId}] Returning cached workspace {WorkspaceId}", traceId, id);
-            return cachedWorkspace;
+            _logger.LogInformation("[{TraceId}] Getting workspace {WorkspaceId} for user {UserId}", traceId, id, userId);
+
+            var cacheKey = $"{traceId}_workspace_{id}";
+            if (_cacheService.TryGetValue<WorkspaceDto>(cacheKey, out var cachedWorkspace))
+            {
+                _logger.LogInformation("[{TraceId}] Returning cached workspace {WorkspaceId}", traceId, id);
+                return ServiceResponse<WorkspaceDto>.SuccessResponse(cachedWorkspace);
+            }
+
+            var workspace = await _unitOfWork.WorkspaceRepository.GetWorkspaceWithNotesAsync(id);
+            if (workspace == null)
+            {
+                _logger.LogWarning("[{TraceId}] Workspace {WorkspaceId} not found", traceId, id);
+                return ServiceResponse<WorkspaceDto>.FailureResponse("Workspace not found");
+            }
+
+            if (workspace.UserId != userId)
+            {
+                _logger.LogWarning("[{TraceId}] Workspace {WorkspaceId} not owned by user {UserId}", traceId, id, userId);
+                return ServiceResponse<WorkspaceDto>.FailureResponse("Workspace not found or access denied");
+            }
+
+            var workspaceDto = _mapper.Map<WorkspaceDto>(workspace);
+            _cacheService.Set(cacheKey, workspaceDto);
+
+            _logger.LogInformation("[{TraceId}] Successfully retrieved workspace {WorkspaceId} for user {UserId}", 
+                traceId, id, userId);
+
+            return ServiceResponse<WorkspaceDto>.SuccessResponse(workspaceDto);
         }
-
-        var workspace = await _unitOfWork.WorkspaceRepository.GetWorkspaceWithNotesAsync(id);
-
-        if (workspace == null || workspace.UserId != userId)
+        catch (Exception ex)
         {
-            _logger.LogWarning("[{TraceId}] Workspace {WorkspaceId} not found or not owned by user {UserId}", traceId,
-                id, userId);
-            return null;
+            _logger.LogError(ex, "[{TraceId}] Error getting workspace {WorkspaceId} for user {UserId}", 
+                traceId, id, userId);
+            return ServiceResponse<WorkspaceDto>.FailureResponse("Failed to retrieve workspace");
         }
-
-        var workspaceDto = _mapper.Map<WorkspaceDto>(workspace);
-
-        // Store in cache
-        _cacheService.Set(cacheKey, workspaceDto);
-
-        return workspaceDto;
     }
 
-    public async Task<WorkspaceDto> CreateWorkspaceAsync(CreateWorkspaceDto createWorkspaceDto, string userId,
-        string traceId)
+    public async Task<ServiceResponse<WorkspaceDto>> CreateWorkspaceAsync(CreateWorkspaceDto createWorkspaceDto, string userId, string traceId)
     {
-        _logger.LogInformation("[{TraceId}] Creating workspace for user {UserId}", traceId, userId);
-
-        var workspace = new Workspace
+        try
         {
-            Name = createWorkspaceDto.Name,
-            Description = createWorkspaceDto.Description,
-            UserId = userId,
-            CreatedAt = DateTime.UtcNow
-        };
+            _logger.LogInformation("[{TraceId}] Creating workspace for user {UserId}", traceId, userId);
 
-        await _unitOfWork.WorkspaceRepository.AddAsync(workspace);
-        await _unitOfWork.SaveChangesAsync();
+            var workspace = new Workspace
+            {
+                Name = createWorkspaceDto.Name,
+                Description = createWorkspaceDto.Description,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow,
+                Notes = new List<Note>()
+            };
 
-        // Invalidate cache
-        string cacheKey = $"{traceId}_user_{userId}_workspaces";
-        _cacheService.Remove(cacheKey);
+            await _unitOfWork.WorkspaceRepository.AddAsync(workspace);
+            await _unitOfWork.SaveChangesAsync();
 
-        return _mapper.Map<WorkspaceDto>(workspace);
-    }
+            var cacheKey = $"{traceId}_user_{userId}_workspaces";
+            _cacheService.Remove(cacheKey);
 
-    public async Task<WorkspaceDto> UpdateWorkspaceAsync(int id, UpdateWorkspaceDto updateWorkspaceDto, string userId,
-        string traceId)
-    {
-        _logger.LogInformation("[{TraceId}] Updating workspace {WorkspaceId} for user {UserId}", traceId, id, userId);
+            var workspaceDto = _mapper.Map<WorkspaceDto>(workspace);
+            _logger.LogInformation("[{TraceId}] Successfully created workspace {WorkspaceId} for user {UserId}", 
+                traceId, workspace.Id, userId);
 
-        var workspace = await _unitOfWork.WorkspaceRepository.GetByIdAsync(id);
-
-        if (workspace == null || workspace.UserId != userId)
-        {
-            _logger.LogWarning("[{TraceId}] Workspace {WorkspaceId} not found or not owned by user {UserId}", traceId,
-                id, userId);
-            return null;
+            return ServiceResponse<WorkspaceDto>.SuccessResponse(workspaceDto);
         }
-
-        workspace.Name = updateWorkspaceDto.Name;
-        workspace.Description = updateWorkspaceDto.Description;
-        workspace.ModifiedAt = DateTime.UtcNow;
-
-        await _unitOfWork.WorkspaceRepository.UpdateAsync(workspace);
-        await _unitOfWork.SaveChangesAsync();
-
-        // Invalidate caches
-        _cacheService.Remove($"{traceId}_user_{userId}_workspaces");
-        _cacheService.Remove($"{traceId}_workspace_{id}");
-
-        return _mapper.Map<WorkspaceDto>(workspace);
-    }
-
-    public async Task DeleteWorkspaceAsync(int id, string userId, string traceId)
-    {
-        _logger.LogInformation("[{TraceId}] Deleting workspace {WorkspaceId} for user {UserId}", traceId, id, userId);
-
-        var workspace = await _unitOfWork.WorkspaceRepository.GetByIdAsync(id);
-
-        if (workspace == null || workspace.UserId != userId)
+        catch (Exception ex)
         {
-            _logger.LogWarning("[{TraceId}] Workspace {WorkspaceId} not found or not owned by user {UserId}", traceId,
-                id, userId);
-            return;
+            _logger.LogError(ex, "[{TraceId}] Error creating workspace for user {UserId}", traceId, userId);
+            return ServiceResponse<WorkspaceDto>.FailureResponse("Failed to create workspace");
         }
-
-        await _unitOfWork.WorkspaceRepository.DeleteAsync(workspace);
-        await _unitOfWork.SaveChangesAsync();
-
-        // Invalidate caches
-        _cacheService.Remove($"{traceId}_user_{userId}_workspaces");
-        _cacheService.Remove($"{traceId}_workspace_{id}");
     }
 
+    public async Task<ServiceResponse<WorkspaceDto>> UpdateWorkspaceAsync(int id, UpdateWorkspaceDto updateWorkspaceDto, string userId, string traceId)
+    {
+        try
+        {
+            _logger.LogInformation("[{TraceId}] Updating workspace {WorkspaceId} for user {UserId}", traceId, id, userId);
+
+            var workspace = await _unitOfWork.WorkspaceRepository.GetByIdAsync(id);
+            if (workspace == null)
+            {
+                _logger.LogWarning("[{TraceId}] Workspace {WorkspaceId} not found", traceId, id);
+                return ServiceResponse<WorkspaceDto>.FailureResponse("Workspace not found");
+            }
+
+            if (workspace.UserId != userId)
+            {
+                _logger.LogWarning("[{TraceId}] Workspace {WorkspaceId} not owned by user {UserId}", traceId, id, userId);
+                return ServiceResponse<WorkspaceDto>.FailureResponse("Workspace not found or access denied");
+            }
+
+            workspace.Name = updateWorkspaceDto.Name ?? workspace.Name;
+            workspace.Description = updateWorkspaceDto.Description ?? workspace.Description;
+            workspace.ModifiedAt = DateTime.UtcNow;
+
+            await _unitOfWork.WorkspaceRepository.UpdateAsync(workspace);
+            await _unitOfWork.SaveChangesAsync();
+
+            _cacheService.Remove($"{traceId}_user_{userId}_workspaces");
+            _cacheService.Remove($"{traceId}_workspace_{id}");
+
+            var workspaceDto = _mapper.Map<WorkspaceDto>(workspace);
+            _logger.LogInformation("[{TraceId}] Successfully updated workspace {WorkspaceId} for user {UserId}", 
+                traceId, id, userId);
+
+            return ServiceResponse<WorkspaceDto>.SuccessResponse(workspaceDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{TraceId}] Error updating workspace {WorkspaceId} for user {UserId}", 
+                traceId, id, userId);
+            return ServiceResponse<WorkspaceDto>.FailureResponse("Failed to update workspace");
+        }
+    }
+
+    public async Task<ServiceResponse<bool>> DeleteWorkspaceAsync(int id, string userId, string traceId)
+    {
+        try
+        {
+            _logger.LogInformation("[{TraceId}] Deleting workspace {WorkspaceId} for user {UserId}", traceId, id, userId);
+
+            var workspace = await _unitOfWork.WorkspaceRepository.GetByIdAsync(id);
+            if (workspace == null)
+            {
+                _logger.LogWarning("[{TraceId}] Workspace {WorkspaceId} not found", traceId, id);
+                return ServiceResponse<bool>.FailureResponse("Workspace not found");
+            }
+
+            if (workspace.UserId != userId)
+            {
+                _logger.LogWarning("[{TraceId}] Workspace {WorkspaceId} not owned by user {UserId}", traceId, id, userId);
+                return ServiceResponse<bool>.FailureResponse("Workspace not found or access denied");
+            }
+
+            await _unitOfWork.WorkspaceRepository.DeleteAsync(workspace);
+            await _unitOfWork.SaveChangesAsync();
+
+            _cacheService.Remove($"{traceId}_user_{userId}_workspaces");
+            _cacheService.Remove($"{traceId}_workspace_{id}");
+
+            _logger.LogInformation("[{TraceId}] Successfully deleted workspace {WorkspaceId} for user {UserId}", 
+                traceId, id, userId);
+
+            return ServiceResponse<bool>.SuccessResponse(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{TraceId}] Error deleting workspace {WorkspaceId} for user {UserId}", 
+                traceId, id, userId);
+            return ServiceResponse<bool>.FailureResponse("Failed to delete workspace");
+        }
+    }
 }
