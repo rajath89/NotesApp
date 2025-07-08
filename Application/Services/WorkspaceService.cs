@@ -12,14 +12,18 @@ public class WorkspaceService : IWorkspaceService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly ILogger<WorkspaceService> _logger;
-    private readonly ICacheService _cacheService;
+    private readonly IGlobalWorkspaceCache _globalCache;
 
-    public WorkspaceService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<WorkspaceService> logger, ICacheService cacheService)
+    public WorkspaceService(
+        IUnitOfWork unitOfWork, 
+        IMapper mapper, 
+        ILogger<WorkspaceService> logger, 
+        IGlobalWorkspaceCache globalCache)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _logger = logger;
-        _cacheService = cacheService;
+        _globalCache = globalCache;
     }
 
     public async Task<ServiceResponse<IEnumerable<WorkspaceDto>>> GetUserWorkspacesAsync(string userId, string traceId)
@@ -28,17 +32,21 @@ public class WorkspaceService : IWorkspaceService
         {
             _logger.LogInformation("[{TraceId}] Getting workspaces for user {UserId}", traceId, userId);
 
-            var cacheKey = $"{traceId}_user_{userId}_workspaces";
-            if (_cacheService.TryGetValue<IEnumerable<WorkspaceDto>>(cacheKey, out var cachedWorkspaces))
+            // Try cache first
+            var cachedWorkspaces = await _globalCache.GetUserWorkspacesAsync(userId);
+            if (cachedWorkspaces != null)
             {
                 _logger.LogInformation("[{TraceId}] Returning cached workspaces for user {UserId}", traceId, userId);
                 return ServiceResponse<IEnumerable<WorkspaceDto>>.SuccessResponse(cachedWorkspaces);
             }
 
+            // Fetch from database
             var workspaces = await _unitOfWork.WorkspaceRepository.GetWorkspacesByUserIdAsync(userId);
             var workspaceDtos = _mapper.Map<IEnumerable<WorkspaceDto>>(workspaces);
 
-            _cacheService.Set(cacheKey, workspaceDtos);
+            // Update cache
+            await _globalCache.SetUserWorkspacesAsync(userId, workspaceDtos);
+
             _logger.LogInformation("[{TraceId}] Successfully retrieved {Count} workspaces for user {UserId}", 
                 traceId, workspaceDtos.Count(), userId);
 
@@ -57,13 +65,15 @@ public class WorkspaceService : IWorkspaceService
         {
             _logger.LogInformation("[{TraceId}] Getting workspace {WorkspaceId} for user {UserId}", traceId, id, userId);
 
-            var cacheKey = $"{traceId}_workspace_{id}";
-            if (_cacheService.TryGetValue<WorkspaceDto>(cacheKey, out var cachedWorkspace))
+            // Try cache first
+            var cachedWorkspace = await _globalCache.GetWorkspaceAsync(id, userId);
+            if (cachedWorkspace != null)
             {
                 _logger.LogInformation("[{TraceId}] Returning cached workspace {WorkspaceId}", traceId, id);
                 return ServiceResponse<WorkspaceDto>.SuccessResponse(cachedWorkspace);
             }
 
+            // Fetch from database
             var workspace = await _unitOfWork.WorkspaceRepository.GetWorkspaceWithNotesAsync(id);
             if (workspace == null)
             {
@@ -78,7 +88,9 @@ public class WorkspaceService : IWorkspaceService
             }
 
             var workspaceDto = _mapper.Map<WorkspaceDto>(workspace);
-            _cacheService.Set(cacheKey, workspaceDto);
+            
+            // Update cache
+            await _globalCache.SetWorkspaceAsync(workspaceDto);
 
             _logger.LogInformation("[{TraceId}] Successfully retrieved workspace {WorkspaceId} for user {UserId}", 
                 traceId, id, userId);
@@ -111,10 +123,14 @@ public class WorkspaceService : IWorkspaceService
             await _unitOfWork.WorkspaceRepository.AddAsync(workspace);
             await _unitOfWork.SaveChangesAsync();
 
-            var cacheKey = $"{traceId}_user_{userId}_workspaces";
-            _cacheService.Remove(cacheKey);
-
             var workspaceDto = _mapper.Map<WorkspaceDto>(workspace);
+
+            // Update cache with new workspace
+            await _globalCache.SetWorkspaceAsync(workspaceDto);
+
+            // Invalidate user workspaces list (needs to include new workspace)
+            await _globalCache.InvalidateUserWorkspacesAsync(userId);
+
             _logger.LogInformation("[{TraceId}] Successfully created workspace {WorkspaceId} for user {UserId}", 
                 traceId, workspace.Id, userId);
 
@@ -153,10 +169,14 @@ public class WorkspaceService : IWorkspaceService
             await _unitOfWork.WorkspaceRepository.UpdateAsync(workspace);
             await _unitOfWork.SaveChangesAsync();
 
-            _cacheService.Remove($"{traceId}_user_{userId}_workspaces");
-            _cacheService.Remove($"{traceId}_workspace_{id}");
-
             var workspaceDto = _mapper.Map<WorkspaceDto>(workspace);
+
+            // Update cache with modified workspace
+            await _globalCache.SetWorkspaceAsync(workspaceDto);
+
+            // Invalidate user workspaces list (workspace names might have changed)
+            await _globalCache.InvalidateUserWorkspacesAsync(userId);
+
             _logger.LogInformation("[{TraceId}] Successfully updated workspace {WorkspaceId} for user {UserId}", 
                 traceId, id, userId);
 
@@ -192,8 +212,12 @@ public class WorkspaceService : IWorkspaceService
             await _unitOfWork.WorkspaceRepository.DeleteAsync(workspace);
             await _unitOfWork.SaveChangesAsync();
 
-            _cacheService.Remove($"{traceId}_user_{userId}_workspaces");
-            _cacheService.Remove($"{traceId}_workspace_{id}");
+            // Remove from cache
+            await _globalCache.InvalidateWorkspaceAsync(id);
+            await _globalCache.InvalidateUserWorkspacesAsync(userId);
+
+            // Also invalidate workspace notes since the workspace is being deleted
+            await _globalCache.InvalidateWorkspaceNotesAsync(id);
 
             _logger.LogInformation("[{TraceId}] Successfully deleted workspace {WorkspaceId} for user {UserId}", 
                 traceId, id, userId);

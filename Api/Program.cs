@@ -53,6 +53,9 @@ builder.Services.AddSingleton<ICacheService, InMemoryCacheService>();
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+// Add global workspace cache
+builder.Services.AddCachingServices();
  
 
 
