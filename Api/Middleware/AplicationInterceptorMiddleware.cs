@@ -57,10 +57,21 @@ public class AplicationInterceptorMiddleware
                 // Extract trace ID from JWT token if present, otherwise generate new one
                 var jwtToken = validatedToken as JwtSecurityToken;
                 string traceId = jwtToken?.Claims?.FirstOrDefault(x => x.Type == "TraceId")?.Value;
-                string userId = jwtToken?.Claims?.FirstOrDefault(x => x.Type == "sub")?.Value;
+                string userId = jwtToken?.Claims?.FirstOrDefault(x => x.Type == "nameid")?.Value;
+                
+                if(string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogError("UserId not found in JWT token for request {Method} {Path}.",
+                        context.Request.Method, context.Request.Path);
+                    context.Response.StatusCode = 401;
+                    await context.Response.WriteAsync("Invalid JWT token: UserId not found.");
+                    return;
+                }
                 
                 if (string.IsNullOrEmpty(traceId))
                 {
+                    _logger.LogError("TraceId not found in JWT token for request {Method} {Path}. Generating new TraceId.",
+                        context.Request.Method, context.Request.Path);
                     traceId = Guid.NewGuid().ToString();
                 }
 
