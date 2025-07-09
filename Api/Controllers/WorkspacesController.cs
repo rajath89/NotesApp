@@ -24,7 +24,7 @@ public class WorkspacesController : ControllerBase
     private string GetTraceId() => HttpContext.Items["TraceId"]?.ToString();
     private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-    [HttpGet]
+    [HttpGet("GetWorkspaces")]
     public async Task<ActionResult<WorkspaceResponse>> GetWorkspaces()
     {
         var traceId = GetTraceId();
@@ -58,8 +58,8 @@ public class WorkspacesController : ControllerBase
         });
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<WorkspaceResponse>> GetWorkspace(int id)
+    [HttpGet("GetWorkspace")]
+    public async Task<ActionResult<WorkspaceResponse>> GetWorkspace([FromQuery] int id)
     {
         var traceId = GetTraceId();
         var userId = GetUserId();
@@ -95,7 +95,7 @@ public class WorkspacesController : ControllerBase
         });
     }
 
-    [HttpPost]
+    [HttpPost("CreateWorkspace")]
     public async Task<ActionResult<WorkspaceOperationResponse>> CreateWorkspace(CreateWorkspaceDto createWorkspaceDto)
     {
         var traceId = GetTraceId();
@@ -128,8 +128,8 @@ public class WorkspacesController : ControllerBase
         });
     }
 
-    [HttpPut("{id}")]
-    public async Task<ActionResult<WorkspaceOperationResponse>> UpdateWorkspace(int id, UpdateWorkspaceDto updateWorkspaceDto)
+    [HttpPut("UpdateWorkspace")]
+    public async Task<ActionResult<WorkspaceOperationResponse>> UpdateWorkspace([FromQuery] int id, UpdateWorkspaceDto updateWorkspaceDto)
     {
         var traceId = GetTraceId();
         var userId = GetUserId();
@@ -164,8 +164,8 @@ public class WorkspacesController : ControllerBase
         });
     }
 
-    [HttpDelete("{id}")]
-    public async Task<ActionResult<WorkspaceOperationResponse>> DeleteWorkspace(int id)
+    [HttpDelete("DeleteWorkspace")]
+    public async Task<ActionResult<WorkspaceOperationResponse>> DeleteWorkspace([FromQuery] int id)
     {
         var traceId = GetTraceId();
         var userId = GetUserId();

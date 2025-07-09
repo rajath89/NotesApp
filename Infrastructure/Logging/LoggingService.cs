@@ -3,7 +3,7 @@ namespace Infrastructure.Logging;
 using Serilog;
 using Serilog.Events;
 
-public static class LoggingService
+public static class LoggingService 
 {
     public static void ConfigureLogging()
     {
@@ -11,8 +11,7 @@ public static class LoggingService
             .MinimumLevel.Debug()
             .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
             .Enrich.FromLogContext()
-            //.WriteTo
-            //.WriteTo.File("logs/note-taking-app-.txt", rollingInterval: )
+            .WriteTo.File("logs/note-taking-app-.txt", rollingInterval: RollingInterval.Day)
             .CreateLogger();
     }
 }

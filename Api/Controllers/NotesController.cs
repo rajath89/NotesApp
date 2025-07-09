@@ -19,7 +19,7 @@ namespace Api.Controllers;
             _noteService = noteService;
         }
 
-        private string GetTraceId() => HttpContext.Items["TraceId"]?.ToString() ?? "untraced";
+        private string GetTraceId() => HttpContext.Items["TraceId"]?.ToString();
         private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         [HttpGet("workspace/{workspaceId}")]

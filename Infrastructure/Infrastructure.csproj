@@ -12,10 +12,7 @@
 
     <ItemGroup>
       <PackageReference Include="Serilog" Version="4.3.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Migrations\" />
+      <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     </ItemGroup>
 
     <ItemGroup>
